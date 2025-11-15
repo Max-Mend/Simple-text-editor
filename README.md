@@ -19,7 +19,6 @@ A minimalist, lightweight text editor built with Qt6, featuring a clean interfac
 - **Plain Text Editing** - Fast and responsive text editing
 - **Monospace Font** - JetBrains Mono 14pt for comfortable coding/writing
 - **Large Viewing Area** - Distraction-free editing experience
-- **Status Bar** - Real-time feedback and notifications
 
 ### Interface
 - **Menu Bar** - Classic menu-driven interface
