@@ -130,18 +130,6 @@ mainWindow.resize(1200, 800);  // Change width and height
 - "Run" menu item is not implemented
 - "New File" clears current content without saving prompt
 
-##  Future Enhancements
-
-Planned features for future versions:
-- [ ] Syntax highlighting for multiple languages
-- [ ] Line numbers
-- [ ] Find and replace
-- [ ] Recent files list
-- [ ] Tab support for multiple files
-- [ ] Auto-save functionality
-- [ ] Configurable themes (dark mode)
-- [ ] Word count and statistics
-
 ##  Contributing
 
 Contributions are welcome! Feel free to:
@@ -183,4 +171,4 @@ Perfect for:
 
 ---
 
-*Simple, fast, and efficient text editing.* ✨
+*Simple, fast, and efficient text editing.* 
