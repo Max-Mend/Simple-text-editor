@@ -6,10 +6,12 @@
 #include <QFont>
 #include <QStatusBar>
 #include <QFileDialog>
+#include <QDialog>
 
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
     QFileDialog fileDialog;
+    QDialog *dlg = new QDialog();
 
     QMainWindow mainWindow;
 
@@ -76,10 +78,23 @@ int main(int argc, char *argv[]) {
 
     QObject::connect(openPlugin, &QAction::triggered, [&]() {
         QString fileName = QFileDialog::getOpenFileName(nullptr,
-                            "Open Plugin", "", "Plugin Files (*.py)");
+                            "Open Plugin", "", "*.py");
         if (!fileName.isEmpty()) {
             qDebug() << "Opened plugin:" << fileName;
         }
+    });
+
+    QMenu *helpMenu = menuBar->addMenu("&Info");
+    QAction *aboutAction = helpMenu->addAction("&About");
+    QObject::connect(aboutAction, &QAction::triggered, [&]() {
+        QDialog aboutDialog;
+        aboutDialog.setWindowTitle("About");
+        aboutDialog.resize(400, 200);
+        QLabel *label = new QLabel("v1.0.0\nAuthor: Max-Mend", &aboutDialog);
+        label->setAlignment(Qt::AlignCenter);
+        QVBoxLayout *layout = new QVBoxLayout(&aboutDialog);
+        layout->addWidget(label);
+        aboutDialog.exec();
     });
 
 
