@@ -70,6 +70,20 @@ int main(int argc, char *argv[]) {
 
     editMenu->addAction("&Exit", QApplication::quit);
 
+    QMenu *pluginsMenu = menuBar->addMenu("&Plugins");
+    pluginsMenu->addAction("&Create plugin");
+    QAction *openPlugin = pluginsMenu->addAction("&Open plugin");
+
+    QObject::connect(openPlugin, &QAction::triggered, [&]() {
+        QString fileName = QFileDialog::getOpenFileName(nullptr,
+                            "Open Plugin", "", "Plugin Files (*.py)");
+        if (!fileName.isEmpty()) {
+            qDebug() << "Opened plugin:" << fileName;
+        }
+    });
+
+
+
     mainWindow.setWindowTitle("Simple text editor");
     mainWindow.resize(1200, 800);
     mainWindow.show();
