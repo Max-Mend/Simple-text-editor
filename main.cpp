@@ -6,22 +6,42 @@
 #include <QFont>
 #include <QStatusBar>
 #include <QFileDialog>
-#include <QDialog>
+#include <QTabWidget>
+#include <QFileInfo>
 
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
     QFileDialog fileDialog;
-    QDialog *dlg = new QDialog();
 
     QMainWindow mainWindow;
 
-    QPlainTextEdit *textEdit = new QPlainTextEdit();
+    QTabWidget *tabs = new QTabWidget;
+    tabs->setTabsClosable(true);
+    tabs->setMovable(true);
+    tabs->setTabPosition(QTabWidget::North);
+    mainWindow.setCentralWidget(tabs);
 
-    QFont font("JetBrain Mono", 14);
+    QObject::connect(tabs, &QTabWidget::tabCloseRequested, [&](int index) {
+        QWidget *page = tabs->widget(index);
+        tabs->removeTab(index);
+        delete page;
+    });
+
+    QFont font("JetBrains Mono", 14);
+
+    auto createEditorTab = [&](const QString &title, const QString &content = "") {
+        QPlainTextEdit *editor = new QPlainTextEdit;
+        editor->setFont(font);
+        editor->setPlainText(content);
+
+        int index = tabs->addTab(editor, title);
+        tabs->setCurrentIndex(index);
+        return editor;
+    };
+
+    createEditorTab("Untitled");
+
     font.setFixedPitch(true);
-    textEdit->setFont(font);
-
-    mainWindow.setCentralWidget(textEdit);
 
     QFont fontmenu("JetBrain Mono", 11);
     font.setFixedPitch(true);
@@ -33,7 +53,10 @@ int main(int argc, char *argv[]) {
     mainWindow.setStatusBar(statusBar);
 
     QMenu *fileMenu = menuBar->addMenu("&File");
-    fileMenu->addAction("&New File");
+    QAction *newFile = fileMenu->addAction("&New File");
+    QObject::connect(newFile, &QAction::triggered, [&]() {
+       createEditorTab("Untitled");
+    });
 
     QAction *openFileAction = fileMenu->addAction("&Open File");
     QObject::connect(openFileAction, &QAction::triggered, [&](){
@@ -42,7 +65,9 @@ int main(int argc, char *argv[]) {
         if (!fileName.isEmpty()) {
             QFile file(fileName);
             if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-                textEdit->setPlainText(file.readAll());
+                QFileInfo fileInfo(fileName);
+                QString tabName = fileInfo.fileName();
+                createEditorTab(tabName, file.readAll());
             }
         }
     });
@@ -61,9 +86,14 @@ int main(int argc, char *argv[]) {
         if (!fileName.isEmpty()) {
             QFile file(fileName);
             if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-                file.write(textEdit->toPlainText().toUtf8());
-                file.close();
-                statusBar->showMessage("Saved file: " + fileName, 5000);
+                QPlainTextEdit *currentEditor = qobject_cast<QPlainTextEdit*>(tabs->currentWidget());
+                if (currentEditor) {
+                    file.write(currentEditor->toPlainText().toUtf8());
+                    file.close();
+                    QFileInfo fileInfo(fileName);
+                    tabs->setTabText(tabs->currentIndex(), fileInfo.fileName());
+                    statusBar->showMessage("Saved file: " + fileName, 5000);
+                }
             } else {
                 statusBar->showMessage("Failed to save file!", 5000);
             }
@@ -90,14 +120,12 @@ int main(int argc, char *argv[]) {
         QDialog aboutDialog;
         aboutDialog.setWindowTitle("About");
         aboutDialog.resize(400, 200);
-        QLabel *label = new QLabel("v1.0.0\nAuthor: Max-Mend", &aboutDialog);
+        QLabel *label = new QLabel("v1.1.0\nAuthor: Max-Mend", &aboutDialog);
         label->setAlignment(Qt::AlignCenter);
         QVBoxLayout *layout = new QVBoxLayout(&aboutDialog);
         layout->addWidget(label);
         aboutDialog.exec();
     });
-
-
 
     mainWindow.setWindowTitle("Simple text editor");
     mainWindow.resize(1200, 800);
