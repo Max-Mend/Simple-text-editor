@@ -120,6 +120,10 @@ int main(int argc, char *argv[]) {
 
     QMenu *editMenu = menuBar->addMenu("&Edit");
 
+    editMenu->addAction("Run");
+
+    editMenu->addSeparator();
+
     QAction *saveFileAction = editMenu->addAction("&Save File");
     QObject::connect(saveFileAction, &QAction::triggered, [&](){
         QPlainTextEdit *currentEditor = qobject_cast<QPlainTextEdit*>(tabs->currentWidget());
