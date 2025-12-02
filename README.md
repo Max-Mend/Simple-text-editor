@@ -4,7 +4,7 @@ A minimalist, lightweight text editor built with Qt6, featuring a clean interfac
 
 ##  Screenshot
 
-![Simple Text Editor](photo/1.png)
+![Simple Text Editor](photo/2.png)
 
 ##  Features
 
