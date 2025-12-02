@@ -403,7 +403,7 @@ int main(int argc, char *argv[]) {
         aboutDialog.setWindowTitle("About Chora");
         aboutDialog.resize(400, 200);
 
-        QLabel *label = new QLabel("Chora Text Editor\n\nv1.4.0\nAuthor: Max-Mend\n\nA lightweight code editor built with Qt", &aboutDialog);
+        QLabel *label = new QLabel("Chora Text Editor\n\nv1.3.0\nAuthor: Max-Mend\n\nA lightweight code editor built with Qt", &aboutDialog);
         label->setAlignment(Qt::AlignCenter);
 
         QVBoxLayout *layout = new QVBoxLayout(&aboutDialog);
