@@ -17,6 +17,114 @@
 #include <QDialog>
 #include <QDir>
 #include <QDebug>
+#include <QPushButton>
+#include <QCheckBox>
+#include <QSpinBox>
+#include <QGroupBox>
+#include <QPainter>
+#include <QTextBlock>
+
+class CodeEditor;
+
+class LineNumberArea : public QWidget {
+public:
+    LineNumberArea(CodeEditor *editor);
+    QSize sizeHint() const override;
+
+protected:
+    void paintEvent(QPaintEvent *event) override;
+
+private:
+    CodeEditor *codeEditor;
+};
+
+class CodeEditor : public QPlainTextEdit {
+public:
+    CodeEditor(QWidget *parent = nullptr) : QPlainTextEdit(parent) {
+        lineNumberArea = new LineNumberArea(this);
+        lineNumbersVisible = true;
+
+        connect(this, &QPlainTextEdit::blockCountChanged, this, &CodeEditor::updateLineNumberAreaWidth);
+        connect(this, &QPlainTextEdit::updateRequest, this, &CodeEditor::updateLineNumberArea);
+
+        updateLineNumberAreaWidth(0);
+    }
+
+    void lineNumberAreaPaintEvent(QPaintEvent *event) {
+        QPainter painter(lineNumberArea);
+        painter.fillRect(event->rect(), QColor(40, 44, 52));
+
+        QTextBlock block = firstVisibleBlock();
+        int blockNumber = block.blockNumber();
+        int top = qRound(blockBoundingGeometry(block).translated(contentOffset()).top());
+        int bottom = top + qRound(blockBoundingRect(block).height());
+
+        while (block.isValid() && top <= event->rect().bottom()) {
+            if (block.isVisible() && bottom >= event->rect().top()) {
+                QString number = QString::number(blockNumber + 1);
+                painter.setPen(QColor(128, 128, 128));
+                painter.drawText(0, top, lineNumberArea->width() - 5, fontMetrics().height(),
+                               Qt::AlignRight, number);
+            }
+
+            block = block.next();
+            top = bottom;
+            bottom = top + qRound(blockBoundingRect(block).height());
+            ++blockNumber;
+        }
+    }
+
+    int lineNumberAreaWidth() {
+        return fontMetrics().horizontalAdvance(QLatin1Char('9')) * 5;
+    }
+
+    void setLineNumbersVisible(bool visible) {
+        lineNumbersVisible = visible;
+        lineNumberArea->setVisible(visible);
+        updateLineNumberAreaWidth(0);
+    }
+
+    bool areLineNumbersVisible() const {
+        return lineNumbersVisible;
+    }
+
+protected:
+    void resizeEvent(QResizeEvent *e) override {
+        QPlainTextEdit::resizeEvent(e);
+        QRect cr = contentsRect();
+        lineNumberArea->setGeometry(QRect(cr.left(), cr.top(),
+                                          lineNumbersVisible ? lineNumberAreaWidth() : 0,
+                                          cr.height()));
+    }
+
+private:
+    void updateLineNumberAreaWidth(int) {
+        setViewportMargins(lineNumbersVisible ? lineNumberAreaWidth() : 0, 0, 0, 0);
+    }
+
+    void updateLineNumberArea(const QRect &rect, int dy) {
+        if (dy)
+            lineNumberArea->scroll(0, dy);
+        else
+            lineNumberArea->update(0, rect.y(), lineNumberArea->width(), rect.height());
+
+        if (rect.contains(viewport()->rect()))
+            updateLineNumberAreaWidth(0);
+    }
+
+    LineNumberArea *lineNumberArea;
+    bool lineNumbersVisible;
+};
+
+LineNumberArea::LineNumberArea(CodeEditor *editor) : QWidget(editor), codeEditor(editor) {}
+
+QSize LineNumberArea::sizeHint() const {
+    return QSize(codeEditor->lineNumberAreaWidth(), 0);
+}
+
+void LineNumberArea::paintEvent(QPaintEvent *event) {
+    codeEditor->lineNumberAreaPaintEvent(event);
+}
 
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
@@ -35,7 +143,6 @@ int main(int argc, char *argv[]) {
     tree->setHeaderHidden(true);
     tree->setMaximumWidth(300);
     tree->setMinimumWidth(150);
-
 
     QTabWidget *tabs = new QTabWidget;
     tabs->setTabsClosable(true);
@@ -63,10 +170,13 @@ int main(int argc, char *argv[]) {
     fontMenu.setFixedPitch(true);
 
     auto createEditorTab = [&](const QString &title, const QString &content = "", const QString &filePath = "") {
-        QPlainTextEdit *editor = new QPlainTextEdit;
+        CodeEditor *editor = new CodeEditor;
         editor->setFont(font);
         editor->setPlainText(content);
         editor->setProperty("filePath", filePath);
+
+        editor->setLineWrapMode(QPlainTextEdit::NoWrap);
+
         int index = tabs->addTab(editor, title);
         tabs->setCurrentIndex(index);
         return editor;
@@ -126,7 +236,7 @@ int main(int argc, char *argv[]) {
 
     QAction *saveFileAction = editMenu->addAction("&Save File");
     QObject::connect(saveFileAction, &QAction::triggered, [&](){
-        QPlainTextEdit *currentEditor = qobject_cast<QPlainTextEdit*>(tabs->currentWidget());
+        CodeEditor *currentEditor = dynamic_cast<CodeEditor*>(tabs->currentWidget());
         if (!currentEditor) return;
 
         QString filePath = currentEditor->property("filePath").toString();
@@ -156,7 +266,7 @@ int main(int argc, char *argv[]) {
         if (!fileName.isEmpty()) {
             QFile file(fileName);
             if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-                QPlainTextEdit *currentEditor = qobject_cast<QPlainTextEdit*>(tabs->currentWidget());
+                CodeEditor *currentEditor = dynamic_cast<CodeEditor*>(tabs->currentWidget());
                 if (currentEditor) {
                     file.write(currentEditor->toPlainText().toUtf8());
                     file.close();
@@ -183,6 +293,109 @@ int main(int argc, char *argv[]) {
         }
     });
 
+    QAction *preferencesAction = menuBar->addAction("&Settings");
+    QObject::connect(preferencesAction, &QAction::triggered, [&]() {
+        QDialog settingsDialog(&mainWindow);
+        settingsDialog.setWindowTitle("Settings");
+        settingsDialog.resize(600, 400);
+
+        QVBoxLayout *mainLayout = new QVBoxLayout(&settingsDialog);
+
+        QGroupBox *interfaceGroup = new QGroupBox("Interface", &settingsDialog);
+        QVBoxLayout *interfaceLayout = new QVBoxLayout(interfaceGroup);
+
+        QCheckBox *treeViewCheckBox = new QCheckBox("Show File Tree", interfaceGroup);
+        treeViewCheckBox->setChecked(!tree->isHidden());
+        interfaceLayout->addWidget(treeViewCheckBox);
+
+        CodeEditor *currentEditor = dynamic_cast<CodeEditor*>(tabs->currentWidget());
+
+        QCheckBox *lineNumbersCheckBox = new QCheckBox("Show Line Numbers", interfaceGroup);
+        lineNumbersCheckBox->setChecked(currentEditor ? currentEditor->areLineNumbersVisible() : true);
+        interfaceLayout->addWidget(lineNumbersCheckBox);
+
+        QCheckBox *statusBarCheckBox = new QCheckBox("Show Status Bar", interfaceGroup);
+        statusBarCheckBox->setChecked(!statusBar->isHidden());
+        interfaceLayout->addWidget(statusBarCheckBox);
+
+        mainLayout->addWidget(interfaceGroup);
+
+        QGroupBox *editorGroup = new QGroupBox("Editor", &settingsDialog);
+        QVBoxLayout *editorLayout = new QVBoxLayout(editorGroup);
+
+        QHBoxLayout *fontLayout = new QHBoxLayout();
+        fontLayout->addWidget(new QLabel("Font Size:", editorGroup));
+        QSpinBox *fontSizeSpinBox = new QSpinBox(editorGroup);
+        fontSizeSpinBox->setRange(8, 24);
+        fontSizeSpinBox->setValue(currentEditor ? currentEditor->font().pointSize() : 14);
+        fontLayout->addWidget(fontSizeSpinBox);
+        fontLayout->addStretch();
+        editorLayout->addLayout(fontLayout);
+
+        QCheckBox *wordWrapCheckBox = new QCheckBox("Word Wrap", editorGroup);
+        wordWrapCheckBox->setChecked(currentEditor ? currentEditor->lineWrapMode() != QPlainTextEdit::NoWrap : false);
+        editorLayout->addWidget(wordWrapCheckBox);
+
+        mainLayout->addWidget(editorGroup);
+
+        mainLayout->addStretch();
+
+        QHBoxLayout *buttonLayout = new QHBoxLayout();
+        buttonLayout->addStretch();
+
+        QPushButton *okButton = new QPushButton("OK", &settingsDialog);
+        QPushButton *cancelButton = new QPushButton("Cancel", &settingsDialog);
+        QPushButton *applyButton = new QPushButton("Apply", &settingsDialog);
+
+        buttonLayout->addWidget(okButton);
+        buttonLayout->addWidget(cancelButton);
+        buttonLayout->addWidget(applyButton);
+
+        mainLayout->addLayout(buttonLayout);
+
+        auto applySettings = [&]() {
+            if (treeViewCheckBox->isChecked()) {
+                tree->show();
+            } else {
+                tree->hide();
+            }
+
+            if (statusBarCheckBox->isChecked()) {
+                statusBar->show();
+            } else {
+                statusBar->hide();
+            }
+
+            for (int i = 0; i < tabs->count(); ++i) {
+                CodeEditor *editor = dynamic_cast<CodeEditor*>(tabs->widget(i));
+                if (editor) {
+                    editor->setLineNumbersVisible(lineNumbersCheckBox->isChecked());
+
+                    QFont editorFont = editor->font();
+                    editorFont.setPointSize(fontSizeSpinBox->value());
+                    editor->setFont(editorFont);
+
+                    if (wordWrapCheckBox->isChecked()) {
+                        editor->setLineWrapMode(QPlainTextEdit::WidgetWidth);
+                    } else {
+                        editor->setLineWrapMode(QPlainTextEdit::NoWrap);
+                    }
+                }
+            }
+        };
+
+        QObject::connect(okButton, &QPushButton::clicked, [&]() {
+            applySettings();
+            settingsDialog.accept();
+        });
+
+        QObject::connect(cancelButton, &QPushButton::clicked, &settingsDialog, &QDialog::reject);
+
+        QObject::connect(applyButton, &QPushButton::clicked, applySettings);
+
+        settingsDialog.exec();
+    });
+
     QMenu *helpMenu = menuBar->addMenu("&Info");
     QAction *aboutAction = helpMenu->addAction("&About");
     QObject::connect(aboutAction, &QAction::triggered, [&]() {
@@ -190,7 +403,7 @@ int main(int argc, char *argv[]) {
         aboutDialog.setWindowTitle("About Chora");
         aboutDialog.resize(400, 200);
 
-        QLabel *label = new QLabel("Chora Text Editor\n\nv1.2.0\nAuthor: Max-Mend\n\nA lightweight code editor built with Qt", &aboutDialog);
+        QLabel *label = new QLabel("Chora Text Editor\n\nv1.4.0\nAuthor: Max-Mend\n\nA lightweight code editor built with Qt", &aboutDialog);
         label->setAlignment(Qt::AlignCenter);
 
         QVBoxLayout *layout = new QVBoxLayout(&aboutDialog);
