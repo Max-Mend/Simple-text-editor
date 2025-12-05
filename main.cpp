@@ -3,14 +3,12 @@
 #include <QMenuBar>
 #include <QMenu>
 #include <QAction>
-#include <QPlainTextEdit>
 #include <QFileDialog>
 #include <QFile>
 #include <QFileInfo>
 #include <QStatusBar>
 #include <QTabWidget>
 #include <QTreeView>
-#include <QFileSystemModel>
 #include <QSplitter>
 #include <QVBoxLayout>
 #include <QLabel>
@@ -22,113 +20,14 @@
 #include <QSpinBox>
 #include <QGroupBox>
 #include <QPainter>
-#include <QTextBlock>
+#include <QFileSystemModel>
+
+#include "core/codeeditor.h"
 
 class CodeEditor;
 
-class LineNumberArea : public QWidget {
-public:
-    LineNumberArea(CodeEditor *editor);
-    QSize sizeHint() const override;
-
-protected:
-    void paintEvent(QPaintEvent *event) override;
-
-private:
-    CodeEditor *codeEditor;
-};
-
-class CodeEditor : public QPlainTextEdit {
-public:
-    CodeEditor(QWidget *parent = nullptr) : QPlainTextEdit(parent) {
-        lineNumberArea = new LineNumberArea(this);
-        lineNumbersVisible = true;
-
-        connect(this, &QPlainTextEdit::blockCountChanged, this, &CodeEditor::updateLineNumberAreaWidth);
-        connect(this, &QPlainTextEdit::updateRequest, this, &CodeEditor::updateLineNumberArea);
-
-        updateLineNumberAreaWidth(0);
-    }
-
-    void lineNumberAreaPaintEvent(QPaintEvent *event) {
-        QPainter painter(lineNumberArea);
-        painter.fillRect(event->rect(), QColor(40, 44, 52));
-
-        QTextBlock block = firstVisibleBlock();
-        int blockNumber = block.blockNumber();
-        int top = qRound(blockBoundingGeometry(block).translated(contentOffset()).top());
-        int bottom = top + qRound(blockBoundingRect(block).height());
-
-        while (block.isValid() && top <= event->rect().bottom()) {
-            if (block.isVisible() && bottom >= event->rect().top()) {
-                QString number = QString::number(blockNumber + 1);
-                painter.setPen(QColor(128, 128, 128));
-                painter.drawText(0, top, lineNumberArea->width() - 5, fontMetrics().height(),
-                               Qt::AlignRight, number);
-            }
-
-            block = block.next();
-            top = bottom;
-            bottom = top + qRound(blockBoundingRect(block).height());
-            ++blockNumber;
-        }
-    }
-
-    int lineNumberAreaWidth() {
-        return fontMetrics().horizontalAdvance(QLatin1Char('9')) * 5;
-    }
-
-    void setLineNumbersVisible(bool visible) {
-        lineNumbersVisible = visible;
-        lineNumberArea->setVisible(visible);
-        updateLineNumberAreaWidth(0);
-    }
-
-    bool areLineNumbersVisible() const {
-        return lineNumbersVisible;
-    }
-
-protected:
-    void resizeEvent(QResizeEvent *e) override {
-        QPlainTextEdit::resizeEvent(e);
-        QRect cr = contentsRect();
-        lineNumberArea->setGeometry(QRect(cr.left(), cr.top(),
-                                          lineNumbersVisible ? lineNumberAreaWidth() : 0,
-                                          cr.height()));
-    }
-
-private:
-    void updateLineNumberAreaWidth(int) {
-        setViewportMargins(lineNumbersVisible ? lineNumberAreaWidth() : 0, 0, 0, 0);
-    }
-
-    void updateLineNumberArea(const QRect &rect, int dy) {
-        if (dy)
-            lineNumberArea->scroll(0, dy);
-        else
-            lineNumberArea->update(0, rect.y(), lineNumberArea->width(), rect.height());
-
-        if (rect.contains(viewport()->rect()))
-            updateLineNumberAreaWidth(0);
-    }
-
-    LineNumberArea *lineNumberArea;
-    bool lineNumbersVisible;
-};
-
-LineNumberArea::LineNumberArea(CodeEditor *editor) : QWidget(editor), codeEditor(editor) {}
-
-QSize LineNumberArea::sizeHint() const {
-    return QSize(codeEditor->lineNumberAreaWidth(), 0);
-}
-
-void LineNumberArea::paintEvent(QPaintEvent *event) {
-    codeEditor->lineNumberAreaPaintEvent(event);
-}
-
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
-
     QMainWindow mainWindow;
 
     QFileSystemModel *model = new QFileSystemModel(&mainWindow);
@@ -403,7 +302,7 @@ int main(int argc, char *argv[]) {
         aboutDialog.setWindowTitle("About Chora");
         aboutDialog.resize(400, 200);
 
-        QLabel *label = new QLabel("Chora Text Editor\n\nv1.3.0\nAuthor: Max-Mend\n\nA lightweight code editor built with Qt", &aboutDialog);
+        QLabel *label = new QLabel("Chora Text Editor\n\nv1.4.0\nAuthor: Max-Mend\n\nA lightweight code editor built with Qt", &aboutDialog);
         label->setAlignment(Qt::AlignCenter);
 
         QVBoxLayout *layout = new QVBoxLayout(&aboutDialog);
@@ -426,6 +325,7 @@ int main(int argc, char *argv[]) {
     });
 
     mainWindow.setWindowTitle("Chora");
+    mainWindow.setWindowIcon(QIcon("../assets/logo.svg"));
     mainWindow.resize(1200, 800);
     mainWindow.show();
 
