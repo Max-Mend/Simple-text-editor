@@ -2,13 +2,13 @@
 #include "MenuBar.h"
 #include "SettingsDialog.h"
 #include "AboutDialog.h"
+#include "StatusBar.h"
 #include "../core/codeeditor.h"
 
 #include <QFileSystemModel>
 #include <QTreeView>
 #include <QTabWidget>
 #include <QSplitter>
-#include <QStatusBar>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -52,7 +52,8 @@ void MainWindow::setupUI() {
 
     setCentralWidget(splitter);
 
-    statusBar = new QStatusBar();
+    // Create custom status bar only once
+    statusBar = new StatusBar(this);
     setStatusBar(statusBar);
 
     menuBar = new MenuBar(this, tabWidget, treeView, statusBar, fileSystemModel);
@@ -72,6 +73,9 @@ void MainWindow::setupConnections() {
     connect(menuBar, &MenuBar::saveFileRequested, this, &MainWindow::onSaveFile);
     connect(menuBar, &MenuBar::settingsRequested, this, &MainWindow::onShowSettings);
     connect(menuBar, &MenuBar::aboutRequested, this, &MainWindow::onShowAbout);
+
+    // Connect tab changes to update cursor position
+    connect(tabWidget, &QTabWidget::currentChanged, this, &MainWindow::onTabChanged);
 }
 
 CodeEditor* MainWindow::createEditorTab(const QString &title, const QString &content,
@@ -82,8 +86,16 @@ CodeEditor* MainWindow::createEditorTab(const QString &title, const QString &con
     editor->setProperty("filePath", filePath);
     editor->setLineWrapMode(QPlainTextEdit::NoWrap);
 
+    // Connect cursor position changes
+    connect(editor, &QPlainTextEdit::cursorPositionChanged,
+            this, &MainWindow::onCursorPositionChanged);
+
     int index = tabWidget->addTab(editor, title);
     tabWidget->setCurrentIndex(index);
+
+    // Update status bar for new tab
+    onCursorPositionChanged();
+
     return editor;
 }
 
@@ -103,9 +115,16 @@ void MainWindow::onOpenFile(const QString &fileName) {
         QFileInfo fileInfo(fileName);
         QString tabName = fileInfo.fileName();
         createEditorTab(tabName, file.readAll(), fileName);
-        statusBar->showMessage("Opened: " + fileName, 5000);
+
+        StatusBar *customStatusBar = dynamic_cast<StatusBar*>(statusBar);
+        if (customStatusBar) {
+            customStatusBar->showMessage("Opened: " + fileName, 5000);
+        }
     } else {
-        statusBar->showMessage("Failed to open file!", 5000);
+        StatusBar *customStatusBar = dynamic_cast<StatusBar*>(statusBar);
+        if (customStatusBar) {
+            customStatusBar->showMessage("Failed to open file!", 5000);
+        }
     }
 }
 
@@ -127,9 +146,16 @@ void MainWindow::onSaveFile(bool saveAs) {
             QFileInfo fileInfo(filePath);
             tabWidget->setTabText(tabWidget->currentIndex(), fileInfo.fileName());
             currentEditor->setProperty("filePath", filePath);
-            statusBar->showMessage("Saved: " + filePath, 5000);
+
+            StatusBar *customStatusBar = dynamic_cast<StatusBar*>(statusBar);
+            if (customStatusBar) {
+                customStatusBar->showMessage("Saved: " + filePath, 5000);
+            }
         } else {
-            statusBar->showMessage("Failed to save file!", 5000);
+            StatusBar *customStatusBar = dynamic_cast<StatusBar*>(statusBar);
+            if (customStatusBar) {
+                customStatusBar->showMessage("Failed to save file!", 5000);
+            }
         }
     }
 }
@@ -152,7 +178,31 @@ void MainWindow::onTreeViewDoubleClicked(const QModelIndex &index) {
         QFile file(filePath);
         if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
             createEditorTab(fileInfo.fileName(), file.readAll(), filePath);
-            statusBar->showMessage("Opened: " + filePath, 5000);
+
+            StatusBar *customStatusBar = dynamic_cast<StatusBar*>(statusBar);
+            if (customStatusBar) {
+                customStatusBar->showMessage("Opened: " + filePath, 5000);
+            }
         }
+    }
+}
+
+void MainWindow::onCursorPositionChanged() {
+    CodeEditor *currentEditor = dynamic_cast<CodeEditor*>(tabWidget->currentWidget());
+    if (!currentEditor) return;
+
+    QTextCursor cursor = currentEditor->textCursor();
+    int line = cursor.blockNumber() + 1;
+    int column = cursor.columnNumber() + 1;
+
+    StatusBar *customStatusBar = dynamic_cast<StatusBar*>(statusBar);
+    if (customStatusBar) {
+        customStatusBar->setLineColumnInfo(line, column);
+    }
+}
+
+void MainWindow::onTabChanged(int index) {
+    if (index >= 0) {
+        onCursorPositionChanged();
     }
 }

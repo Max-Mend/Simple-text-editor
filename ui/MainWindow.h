@@ -29,6 +29,8 @@ private slots:
     void onShowSettings();
     void onShowAbout();
     void onTreeViewDoubleClicked(const QModelIndex &index);
+    void onCursorPositionChanged();
+    void onTabChanged(int index);
 
 private:
     void setupUI();
