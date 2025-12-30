@@ -158,6 +158,10 @@ Perfect for:
 - Note-taking
 - Markdown writing
 
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=Max-Mend/Simple-text-editor&type=date&legend=top-left)](https://www.star-history.com/#Max-Mend/Simple-text-editor&type=date&legend=top-left)
+
 ##  Author
 
 **Max-Mend**
