@@ -4,7 +4,7 @@ A minimalist, lightweight text editor built with Qt6, featuring a clean interfac
 
 ##  Screenshot
 
-![Simple Text Editor](photo/2.png)
+![Simple Text Editor](photo/1.png)
 
 ##  Features
 
@@ -160,8 +160,7 @@ Perfect for:
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=Max-Mend/Simple-text-editor&type=date&legend=top-left)](https://www.star-history.com/#Max-Mend/Simple-text-editor&type=date&legend=top-left)
-
+![Star History Chart](photo/2.png)
 ##  Author
 
 **Max-Mend**
