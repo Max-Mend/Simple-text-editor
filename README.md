@@ -160,7 +160,8 @@ Perfect for:
 
 ## Star History
 
-![Star History Chart](photo/2.png)
+![Simple Text Editor](photo/2.png)
+
 ##  Author
 
 **Max-Mend**
