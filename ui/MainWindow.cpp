@@ -3,6 +3,7 @@
 #include "SettingsDialog.h"
 #include "AboutDialog.h"
 #include "StatusBar.h"
+#include "TerminalWidget.h"
 #include "../core/codeeditor.h"
 
 #include <QFileSystemModel>
@@ -13,46 +14,71 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QFileDialog>
+#include <QSettings>
+#include <QKeyEvent>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
+    autoSaveEnabled = true;
+    autoSaveInterval = 3;
+
     setupUI();
     setupConnections();
+    restoreSettings();
 
-    setWindowTitle("Chora spatium");
-    setWindowIcon(QIcon("../assets/logo.svg"));
-    resize(1200, 800);
+    autoSaveTimer = new QTimer(this);
+    autoSaveTimer->setSingleShot(true);
+    connect(autoSaveTimer, &QTimer::timeout, this, &MainWindow::autoSaveCurrentFile);
 }
 
-MainWindow::~MainWindow() = default;
+MainWindow::~MainWindow() {
+    saveSettings();
+}
 
 void MainWindow::setupUI() {
     fileSystemModel = new QFileSystemModel(this);
-    fileSystemModel->setRootPath(QDir::homePath());
+    fileSystemModel->setRootPath("");
+    fileSystemModel->setFilter(QDir::AllDirs | QDir::Files | QDir::NoDotAndDotDot);
 
-    treeView = new QTreeView;
+    // Налаштування дерева файлів
+    treeView = new QTreeView(this);
     treeView->setModel(fileSystemModel);
     treeView->setRootIndex(fileSystemModel->index(QDir::homePath()));
+
     treeView->setColumnHidden(1, true);
     treeView->setColumnHidden(2, true);
     treeView->setColumnHidden(3, true);
     treeView->setHeaderHidden(true);
+
     treeView->setMaximumWidth(300);
     treeView->setMinimumWidth(150);
 
-    tabWidget = new QTabWidget;
+    treeView->setAnimated(true);
+    treeView->setIndentation(20);
+    treeView->setSortingEnabled(true);
+
+    tabWidget = new QTabWidget(this);
     tabWidget->setTabsClosable(true);
     tabWidget->setMovable(true);
     tabWidget->setTabPosition(QTabWidget::North);
 
-    QSplitter *splitter = new QSplitter(Qt::Horizontal);
-    splitter->addWidget(treeView);
-    splitter->addWidget(tabWidget);
-    splitter->setStretchFactor(0, 1);
-    splitter->setStretchFactor(1, 4);
+    terminal = new TerminalWidget(this);
+    terminal->setWorkingDirectory(QDir::homePath());
 
-    setCentralWidget(splitter);
+    editorSplitter = new QSplitter(Qt::Vertical, this);
+    editorSplitter->addWidget(tabWidget);
+    editorSplitter->addWidget(terminal);
+    editorSplitter->setStretchFactor(0, 3);
+    editorSplitter->setStretchFactor(1, 1);
 
-    // Create custom status bar only once
+    mainSplitter = new QSplitter(Qt::Horizontal, this);
+    mainSplitter->addWidget(treeView);
+    mainSplitter->addWidget(editorSplitter);
+    mainSplitter->setStretchFactor(0, 1);
+    mainSplitter->setStretchFactor(1, 4);
+    mainSplitter->setChildrenCollapsible(false);
+
+    setCentralWidget(mainSplitter);
+
     statusBar = new StatusBar(this);
     setStatusBar(statusBar);
 
@@ -60,8 +86,6 @@ void MainWindow::setupUI() {
 
     editorFont = QFont("JetBrains Mono", 14);
     editorFont.setFixedPitch(true);
-
-    createEditorTab("Untitled");
 }
 
 void MainWindow::setupConnections() {
@@ -74,26 +98,29 @@ void MainWindow::setupConnections() {
     connect(menuBar, &MenuBar::settingsRequested, this, &MainWindow::onShowSettings);
     connect(menuBar, &MenuBar::aboutRequested, this, &MainWindow::onShowAbout);
 
-    // Connect tab changes to update cursor position
     connect(tabWidget, &QTabWidget::currentChanged, this, &MainWindow::onTabChanged);
 }
 
-CodeEditor* MainWindow::createEditorTab(const QString &title, const QString &content,
-                                        const QString &filePath) {
+CodeEditor* MainWindow::createEditorTab(const QString &title, const QString &content, const QString &filePath) {
     CodeEditor *editor = new CodeEditor;
     editor->setFont(editorFont);
     editor->setPlainText(content);
     editor->setProperty("filePath", filePath);
     editor->setLineWrapMode(QPlainTextEdit::NoWrap);
 
-    // Connect cursor position changes
+    if (!filePath.isEmpty()) {
+        editor->detectAndApplySyntaxHighlighting(filePath);
+    }
+
     connect(editor, &QPlainTextEdit::cursorPositionChanged,
             this, &MainWindow::onCursorPositionChanged);
+
+    connect(editor, &QPlainTextEdit::textChanged,
+            this, &MainWindow::onTextChanged);
 
     int index = tabWidget->addTab(editor, title);
     tabWidget->setCurrentIndex(index);
 
-    // Update status bar for new tab
     onCursorPositionChanged();
 
     return editor;
@@ -135,7 +162,36 @@ void MainWindow::onSaveFile(bool saveAs) {
     QString filePath = currentEditor->property("filePath").toString();
 
     if (filePath.isEmpty() || saveAs) {
-        filePath = QFileDialog::getSaveFileName(this, "Save File", "", "All Files (*.*)");
+        QString initialDir;
+
+        if (!filePath.isEmpty() && !saveAs) {
+            QFileInfo fileInfo(filePath);
+            initialDir = fileInfo.absolutePath();
+        } else {
+            QModelIndex rootIndex = treeView->rootIndex();
+            if (rootIndex.isValid()) {
+                initialDir = fileSystemModel->filePath(rootIndex);
+            }
+
+            QModelIndex currentIndex = treeView->currentIndex();
+            if (currentIndex.isValid()) {
+                QString currentPath = fileSystemModel->filePath(currentIndex);
+                QFileInfo pathInfo(currentPath);
+
+                if (pathInfo.isFile()) {
+                    initialDir = pathInfo.absolutePath();
+                }
+                else if (pathInfo.isDir()) {
+                    initialDir = currentPath;
+                }
+            }
+
+            if (initialDir.isEmpty()) {
+                initialDir = QDir::homePath();
+            }
+        }
+
+        filePath = QFileDialog::getSaveFileName(this, "Save File", initialDir, "All Files (*.*)");
     }
 
     if (!filePath.isEmpty()) {
@@ -171,6 +227,10 @@ void MainWindow::onShowAbout() {
 }
 
 void MainWindow::onTreeViewDoubleClicked(const QModelIndex &index) {
+    if (!index.isValid()) {
+        return;
+    }
+
     QString filePath = fileSystemModel->filePath(index);
     QFileInfo fileInfo(filePath);
 
@@ -183,7 +243,14 @@ void MainWindow::onTreeViewDoubleClicked(const QModelIndex &index) {
             if (customStatusBar) {
                 customStatusBar->showMessage("Opened: " + filePath, 5000);
             }
+        } else {
+            StatusBar *customStatusBar = dynamic_cast<StatusBar*>(statusBar);
+            if (customStatusBar) {
+                customStatusBar->showMessage("Failed to open: " + filePath, 5000);
+            }
         }
+    } else if (fileInfo.isDir()) {
+        terminal->setWorkingDirectory(filePath);
     }
 }
 
@@ -205,4 +272,81 @@ void MainWindow::onTabChanged(int index) {
     if (index >= 0) {
         onCursorPositionChanged();
     }
+}
+
+void MainWindow::onTextChanged() {
+    if (autoSaveEnabled) {
+        startAutoSaveTimer();
+    }
+}
+
+void MainWindow::startAutoSaveTimer() {
+    autoSaveTimer->stop();
+    autoSaveTimer->start(autoSaveInterval * 1000);
+}
+
+void MainWindow::autoSaveCurrentFile() {
+    CodeEditor *currentEditor = dynamic_cast<CodeEditor*>(tabWidget->currentWidget());
+    if (!currentEditor) return;
+
+    QString filePath = currentEditor->property("filePath").toString();
+
+    if (filePath.isEmpty()) {
+        return;
+    }
+
+    QFile file(filePath);
+    if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        file.write(currentEditor->toPlainText().toUtf8());
+        file.close();
+
+        StatusBar *customStatusBar = dynamic_cast<StatusBar*>(statusBar);
+        if (customStatusBar) {
+            customStatusBar->showMessage("Auto-saved: " + filePath, 2000);
+        }
+    }
+}
+
+void MainWindow::saveSettings() {
+    QSettings settings("ChoraEditor", "Chora");
+
+    QModelIndex rootIndex = treeView->rootIndex();
+    if (rootIndex.isValid()) {
+        QString currentPath = fileSystemModel->filePath(rootIndex);
+        settings.setValue("lastFolder", currentPath);
+    }
+
+    settings.setValue("geometry", saveGeometry());
+    settings.setValue("windowState", saveState());
+
+    settings.setValue("terminalVisible", terminal->isVisible());
+
+    settings.setValue("autoSaveEnabled", autoSaveEnabled);
+    settings.setValue("autoSaveInterval", autoSaveInterval);
+}
+
+void MainWindow::restoreSettings() {
+    QSettings settings("ChoraEditor", "Chora");
+
+    QString lastFolder = settings.value("lastFolder", QDir::homePath()).toString();
+
+    QDir dir(lastFolder);
+    if (dir.exists()) {
+        fileSystemModel->setRootPath(lastFolder);
+        treeView->setRootIndex(fileSystemModel->index(lastFolder));
+        terminal->setWorkingDirectory(lastFolder);
+    } else {
+        fileSystemModel->setRootPath(QDir::homePath());
+        treeView->setRootIndex(fileSystemModel->index(QDir::homePath()));
+        terminal->setWorkingDirectory(QDir::homePath());
+    }
+
+    restoreGeometry(settings.value("geometry").toByteArray());
+    restoreState(settings.value("windowState").toByteArray());
+
+    bool terminalVisible = settings.value("terminalVisible", true).toBool();
+    terminal->setVisible(terminalVisible);
+
+    autoSaveEnabled = settings.value("autoSaveEnabled", true).toBool();
+    autoSaveInterval = settings.value("autoSaveInterval", 3).toInt();
 }

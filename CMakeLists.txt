@@ -1,8 +1,9 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.28)
 project(chora-spatium VERSION 2.0.0 LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
@@ -28,6 +29,10 @@ add_executable(chora-spatium
         ui/AboutDialog.h
         ui/StatusBar.cpp
         ui/StatusBar.h
+        core/highlighter/c.h
+        core/highlighter/cpp.h
+        ui/TerminalWidget.cpp
+        ui/TerminalWidget.h
 )
 
 target_link_libraries(chora-spatium

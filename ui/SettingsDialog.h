@@ -15,6 +15,7 @@
 #include <QStatusBar>
 
 class CodeEditor;
+class MainWindow;
 
 class SettingsDialog : public QDialog {
     Q_OBJECT
@@ -36,6 +37,7 @@ private:
     QTabWidget *tabWidget;
     QTreeView *treeView;
     QStatusBar *statusBar;
+    MainWindow *mainWindow;
 
     QVBoxLayout *mainLayout;
     QGroupBox *interfaceGroup;
@@ -44,8 +46,11 @@ private:
     QCheckBox *treeViewCheckBox;
     QCheckBox *lineNumbersCheckBox;
     QCheckBox *statusBarCheckBox;
+    QCheckBox *terminalCheckBox;
     QCheckBox *wordWrapCheckBox;
+    QCheckBox *autoSaveCheckBox;
     QSpinBox *fontSizeSpinBox;
+    QSpinBox *autoSaveIntervalSpinBox;
 
     QPushButton *okButton;
     QPushButton *cancelButton;

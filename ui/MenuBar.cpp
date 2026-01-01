@@ -1,5 +1,6 @@
 #include "MenuBar.h"
 #include <QObject>
+#include <QSettings>
 
 MenuBar::MenuBar(QMainWindow *parent, QTabWidget *tabs, QTreeView *tree,
                  QStatusBar *statusBar, QFileSystemModel *model)
@@ -25,12 +26,15 @@ void MenuBar::setupFileMenu() {
     QMenu *fileMenu = menuBar->addMenu("&File");
 
     QAction *newFile = fileMenu->addAction("&New File");
+    newFile->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_T));
     QObject::connect(newFile, &QAction::triggered, this, &MenuBar::onNewFile);
 
     QAction *openFileAction = fileMenu->addAction("&Open File");
+    openFileAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_F));
     QObject::connect(openFileAction, &QAction::triggered, this, &MenuBar::onOpenFile);
 
     QAction *openFolderAction = fileMenu->addAction("&Open Folder");
+    openFolderAction->setShortcut(QKeySequence(Qt::SHIFT | Qt::CTRL | Qt::Key_F));
     QObject::connect(openFolderAction, &QAction::triggered, this, &MenuBar::onOpenFolder);
 
     fileMenu->addSeparator();
@@ -42,13 +46,17 @@ void MenuBar::setupFileMenu() {
 void MenuBar::setupEditMenu() {
     QMenu *editMenu = menuBar->addMenu("&Edit");
 
-    editMenu->addAction("Run");
+    QAction *runAction = editMenu->addAction("Run");
+    runAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_R));
+
     editMenu->addSeparator();
 
     QAction *saveFileAction = editMenu->addAction("&Save File");
+    saveFileAction->setShortcut(QKeySequence::Save);
     QObject::connect(saveFileAction, &QAction::triggered, this, &MenuBar::onSaveFile);
 
     QAction *saveAsAction = editMenu->addAction("Save &As...");
+    saveAsAction->setShortcut(QKeySequence::SaveAs);
     QObject::connect(saveAsAction, &QAction::triggered, this, &MenuBar::onSaveFileAs);
 }
 
@@ -62,6 +70,7 @@ void MenuBar::setupPluginsMenu() {
 
 void MenuBar::setupSettingsMenu() {
     QAction *preferencesAction = menuBar->addAction("&Settings");
+    preferencesAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_P));
     QObject::connect(preferencesAction, &QAction::triggered, this, &MenuBar::onOpenSettings);
 }
 
@@ -83,11 +92,15 @@ void MenuBar::onOpenFile() {
 }
 
 void MenuBar::onOpenFolder() {
-    QString folderName = QFileDialog::getExistingDirectory(mainWindow, "Open Folder", "");
+    QSettings settings("ChoraEditor", "Chora");
+    QString lastFolder = settings.value("lastFolder", QDir::homePath()).toString();
+
+    QString folderName = QFileDialog::getExistingDirectory(mainWindow, "Open Folder", lastFolder);
     if (!folderName.isEmpty()) {
         fileSystemModel->setRootPath(folderName);
         treeView->setRootIndex(fileSystemModel->index(folderName));
         statusBar->showMessage("Opened folder: " + folderName, 5000);
+        settings.setValue("lastFolder", folderName);
     }
 }
 
@@ -102,7 +115,6 @@ void MenuBar::onSaveFileAs() {
 void MenuBar::onOpenPlugin() {
     QString fileName = QFileDialog::getOpenFileName(nullptr, "Open Plugin", "", "*.py");
     if (!fileName.isEmpty()) {
-        qDebug() << "Opened plugin:" << fileName;
         statusBar->showMessage("Plugin functionality not yet implemented", 5000);
     }
 }
