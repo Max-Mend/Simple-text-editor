@@ -1,4 +1,4 @@
-#include "AboutDialog.h"
+#include "ui/AboutDialog.h"
 
 AboutDialog::AboutDialog(QWidget *parent) : QDialog(parent) {
     setWindowTitle("About Chora Spatium");
@@ -11,7 +11,7 @@ AboutDialog::~AboutDialog() = default;
 void AboutDialog::setupUI() {
     QLabel *label = new QLabel(
         "Chora Spatium\n\n"
-        "v1.5.0\n"
+        "v1.6.0\n"
         "Author: Max-Mend\n\n"
         "A lightweight code editor built with Qt", 
         this

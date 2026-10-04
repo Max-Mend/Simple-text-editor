@@ -1,9 +1,9 @@
-#include "SettingsDialog.h"
-#include "MainWindow.h"
-#include "../core/codeeditor.h"
+#include "ui/SettingsDialog.h"
+#include "ui/MainWindow.h"
+#include "core/CodeEditor.h"
 #include <QObject>
 
-#include "TerminalWidget.h"
+#include "ui/TerminalWidget.h"
 
 SettingsDialog::SettingsDialog(QWidget *parent, QTabWidget *tabs,
                                QTreeView *tree, QStatusBar *statusBar)

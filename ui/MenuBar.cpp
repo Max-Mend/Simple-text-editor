@@ -1,4 +1,4 @@
-#include "MenuBar.h"
+#include "ui/MenuBar.h"
 #include <QObject>
 #include <QSettings>
 

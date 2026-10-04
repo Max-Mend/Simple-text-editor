@@ -1,10 +1,10 @@
-#include "MainWindow.h"
-#include "MenuBar.h"
-#include "SettingsDialog.h"
-#include "AboutDialog.h"
-#include "StatusBar.h"
-#include "TerminalWidget.h"
-#include "../core/codeeditor.h"
+#include "ui/MainWindow.h"
+#include "ui/MenuBar.h"
+#include "ui/SettingsDialog.h"
+#include "ui/AboutDialog.h"
+#include "ui/StatusBar.h"
+#include "ui/TerminalWidget.h"
+#include "core/CodeEditor.h"
 
 #include <QFileSystemModel>
 #include <QTreeView>

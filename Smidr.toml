@@ -1,0 +1,23 @@
+[project]
+name = "Chora Spatium"
+version = "1.6.0"
+type = "bin"
+language = "cpp"
+cpp_standard = "cpp20"
+authors = ["Max-Mend"]
+authors_email = []
+
+[build]
+compiler = "auto"
+cflags = []
+libs = []
+linker_flags = []
+
+[paths]
+core = "core"
+ui = "ui"
+
+[dependencies]
+Qt6Core = "6.6.2"
+Qt6Gui = "6.6.2"
+Qt6Widgets = "6.6.2"

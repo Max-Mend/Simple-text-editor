@@ -4,10 +4,10 @@
 #include <QKeyEvent>
 #include <QFileInfo>
 
-#include "codeeditor.h"
-#include "linenum.h"
-#include "highlighter/cpp.h"
-#include "highlighter/c.h"
+#include "core/CodeEditor.h"
+#include "core/LineNum.h"
+#include "core/highlighter/cpp.h"
+#include "core/highlighter/c.h"
 
 CodeEditor::CodeEditor(QWidget *parent)
     : QPlainTextEdit(parent)

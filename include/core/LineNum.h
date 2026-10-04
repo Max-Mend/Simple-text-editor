@@ -3,7 +3,7 @@
 
 #include <QWidget>
 
-#include "codeeditor.h"
+#include "CodeEditor.h"
 
 class LineNumberArea : public QWidget {
     Q_OBJECT

@@ -1,4 +1,4 @@
-#include "TerminalWidget.h"
+#include "ui/TerminalWidget.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QPushButton>
