@@ -84,7 +84,7 @@ g++ main.cpp -o text-editor $(pkg-config --cflags --libs Qt6Widgets)
 ### Built With
 - **Qt6** - Cross-platform application framework
 - **QPlainTextEdit** - Efficient plain text editing widget
-- **C++17** - Modern C++ standards
+- **C++20** - Modern C++ standards
 
 ### Font
 - **JetBrains Mono** - Modern monospace font
